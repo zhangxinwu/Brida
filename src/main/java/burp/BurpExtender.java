@@ -556,7 +556,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 JPanel fridaPathPanel = new JPanel();
                 fridaPathPanel.setLayout(new BoxLayout(fridaPathPanel, BoxLayout.X_AXIS));
                 fridaPathPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                JLabel labelFridaPath = new JLabel("Python files folder: ");
+                JLabel labelFridaPath = new JLabel("Python file path: ");
                 fridaPath = new JTextField(200);
                 if (callbacks.loadExtensionSetting("fridaPath") != null)
                     fridaPath.setText(callbacks.loadExtensionSetting("fridaPath"));

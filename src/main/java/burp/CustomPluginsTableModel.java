@@ -97,7 +97,7 @@ public class CustomPluginsTableModel  extends AbstractTableModel {
 			case 2:
 	            return "Plugin type";    
 			case 3:
-                return "Frida export name";
+                return "Python export name";
 			case 4:
 				return "Enable/Disable";
 			case 5:
