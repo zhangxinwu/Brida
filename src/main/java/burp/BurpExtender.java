@@ -33,6 +33,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -131,7 +132,6 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
     private Process pyroServerProcess;
 
     private JTextField pythonPathVenv;
-    private String pythonScript;
     public JTextField pyroHost;
     public JTextField pyroPort;
     private JTextField fridaCompilePath;
@@ -200,6 +200,8 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
     private int platform;
 
     private List<DefaultHook> defaultHooks;
+
+    private String pythonScript;
 
     private JPanel customPluginToolsPanel;
     private JPanel customPluginScopePanel;
@@ -300,7 +302,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
     class JTableButtonRenderer implements TableCellRenderer {
 
-        private TableCellRenderer defaultRenderer;
+        private final TableCellRenderer defaultRenderer;
 
         public JTableButtonRenderer(TableCellRenderer renderer) {
             defaultRenderer = renderer;
@@ -312,7 +314,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
             } else {
                 Component c = defaultRenderer.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 if (column == 0) {
-                    if (((String) value).equals("Enabled")) {
+                    if (value.equals("Enabled")) {
                         c.setForeground(Color.GREEN);
                     } else {
                         c.setForeground(Color.RED);
@@ -323,39 +325,6 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 return c;
             }
         }
-    }
-
-
-    public void initializeDefaultHooks() {
-
-        // Default Android hooks
-        addButtonToHooksAndFunctions(new DefaultHook("SSL Pinning bypass with CA certificate, more reliable (requires CA public certificate in /data/local/tmp/cert-der.crt)", BurpExtender.PLATFORM_ANDROID, "androidpinningwithca1", true, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("SSL Pinning bypass without CA certificate, less reliable", BurpExtender.PLATFORM_ANDROID, "androidpinningwithoutca1", true, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("Rooting check bypass", BurpExtender.PLATFORM_ANDROID, "androidrooting1", true, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("Hook keystore stuff", BurpExtender.PLATFORM_ANDROID, "tracekeystore", true, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("Hook crypto stuff", BurpExtender.PLATFORM_ANDROID, "dumpcryptostuff", true, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("Bypass fingerprint 1", BurpExtender.PLATFORM_ANDROID, "androidfingerprintbypass1", true, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("Bypass fingerprint 2", BurpExtender.PLATFORM_ANDROID, "androidfingerprintbypass2hook", true, new String[]{}, null, false));
-
-        // Default Android functions
-        addButtonToHooksAndFunctions(new DefaultHook("Bypass fingerprint 2 (Enable the corresponding hook, trigger fingerprint screen and then run this function)", BurpExtender.PLATFORM_ANDROID, "androidfingerprintbypass2function", false, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("Dump all aliases in keystore of predefined types", BurpExtender.PLATFORM_ANDROID, "listaliasesstatic", false, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("Dump all aliases in keystore collected during runtime (through the \"Hook keystore stuff\" hook)", BurpExtender.PLATFORM_ANDROID, "listaliasesruntime", false, new String[]{}, null, false));
-
-        // Default iOS hooks
-        addButtonToHooksAndFunctions(new DefaultHook("SSL Pinning bypass (iOS 10) *", BurpExtender.PLATFORM_IOS, "ios10pinning", true, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("SSL Pinning bypass (iOS 11) *", BurpExtender.PLATFORM_IOS, "ios11pinning", true, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("SSL Pinning bypass (iOS 12) *", BurpExtender.PLATFORM_IOS, "ios12pinning", true, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("SSL Pinning bypass (iOS 13) *", BurpExtender.PLATFORM_IOS, "ios13pinning", true, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("Jailbreaking check bypass **", BurpExtender.PLATFORM_IOS, "iosjailbreak", true, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("Bypass TouchID (click \"Cancel\" when TouchID windows pops up)", BurpExtender.PLATFORM_IOS, "iosbypasstouchid", true, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("Dump crypto stuff", BurpExtender.PLATFORM_IOS, "dumpcryptostuffios", true, new String[]{}, null, false));
-
-        // Default iOS functions
-        addButtonToHooksAndFunctions(new DefaultHook("Dump keychain", BurpExtender.PLATFORM_IOS, "iosdumpkeychain", false, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("List files with Data Protection keys", BurpExtender.PLATFORM_IOS, "iosdataprotectionkeys", false, new String[]{}, null, false));
-        addButtonToHooksAndFunctions(new DefaultHook("Dump and decrypt current ENCRYPTED app (for apps downloaded from App Store)", BurpExtender.PLATFORM_IOS, "iosdumpcurrentencryptedapp", false, new String[]{}, null, false));
-
     }
 
     public void registerExtenderCallbacks(IBurpExtenderCallbacks c) {
@@ -385,7 +354,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
         stdout.println("");
 
         serverStarted = false;
-        applicationSpawned = false;
+        applicationSpawned = true;
 
         lastPrintIsJS = false;
 
@@ -584,40 +553,6 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 pyroPortPanel.add(labelPyroPort);
                 pyroPortPanel.add(pyroPort);
 
-                JPanel fridaCompilePathPanel = new JPanel();
-                fridaCompilePathPanel.setLayout(new BoxLayout(fridaCompilePathPanel, BoxLayout.X_AXIS));
-                fridaCompilePathPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                JLabel labelFridaCompilePath = new JLabel("frida-compile path: ");
-                fridaCompilePath = new JTextField(200);
-                if (callbacks.loadExtensionSetting("fridaCompilePath") != null)
-                    fridaCompilePath.setText(callbacks.loadExtensionSetting("fridaCompilePath"));
-                else {
-                    if (System.getProperty("os.name").startsWith("Windows")) {
-                        fridaCompilePath.setText("C:\\Users\\test\\node_modules\\.bin\\frida-compile.cmd");
-                    } else {
-                        fridaCompilePath.setText("/usr/local/lib/node_modules/.bin/frida-compile");
-                    }
-                }
-                fridaCompilePath.setMaximumSize(fridaCompilePath.getPreferredSize());
-                JButton fridaCompilePathButton = new JButton("Select file");
-                fridaCompilePathButton.setActionCommand("fridaCompilePathSelectFile");
-                fridaCompilePathButton.addActionListener(BurpExtender.this);
-                fridaCompilePathPanel.add(labelFridaCompilePath);
-                fridaCompilePathPanel.add(fridaCompilePath);
-                fridaCompilePathPanel.add(fridaCompilePathButton);
-
-                JPanel fridaCompilePanel = new JPanel();
-                fridaCompilePanel.setLayout(new BoxLayout(fridaCompilePanel, BoxLayout.X_AXIS));
-                fridaCompilePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                JLabel labelFridaCompileVersion = new JLabel("Use old version of frida-compile (< 10): ");
-                fridaCompileOldCheckBox = new JCheckBox();
-                if (callbacks.loadExtensionSetting("fridaCompileOldCheckBox") != null)
-                    fridaCompileOldCheckBox.setSelected(callbacks.loadExtensionSetting("fridaCompileOldCheckBox").equals("true"));
-                else
-                    fridaCompileOldCheckBox.setSelected(true);
-                fridaCompilePanel.add(labelFridaCompileVersion);
-                fridaCompilePanel.add(fridaCompileOldCheckBox);
-
                 JPanel fridaPathPanel = new JPanel();
                 fridaPathPanel.setLayout(new BoxLayout(fridaPathPanel, BoxLayout.X_AXIS));
                 fridaPathPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -633,7 +568,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                     }
                 }
                 fridaPath.setMaximumSize(fridaPath.getPreferredSize());
-                JButton fridaPathButton = new JButton("Select folder");
+                JButton fridaPathButton = new JButton("Select file");
                 fridaPathButton.setActionCommand("fridaPathSelectFile");
                 fridaPathButton.addActionListener(BurpExtender.this);
                 JButton fridaDefaultPathButton = new JButton("Create default JS files");
@@ -643,43 +578,6 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 fridaPathPanel.add(fridaPath);
                 fridaPathPanel.add(fridaPathButton);
 //                fridaPathPanel.add(fridaDefaultPathButton);
-
-                JPanel applicationIdPanel = new JPanel();
-                applicationIdPanel.setLayout(new BoxLayout(applicationIdPanel, BoxLayout.X_AXIS));
-                applicationIdPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                JLabel labelApplicationId = new JLabel("Application ID (spawn) / PID (attach): ");
-                applicationId = new JTextField(200);
-                if (callbacks.loadExtensionSetting("applicationId") != null)
-                    applicationId.setText(callbacks.loadExtensionSetting("applicationId"));
-                else
-                    applicationId.setText("org.test.application");
-                applicationId.setMaximumSize(applicationId.getPreferredSize());
-                applicationIdPanel.add(labelApplicationId);
-                applicationIdPanel.add(applicationId);
-
-                JPanel localRemotePanel = new JPanel();
-                localRemotePanel.setLayout(new BoxLayout(localRemotePanel, BoxLayout.X_AXIS));
-                localRemotePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                remoteRadioButton = new JRadioButton("Frida Remote");
-                usbRadioButton = new JRadioButton("Frida USB");
-                localRadioButton = new JRadioButton("Frida Local");
-                if (callbacks.loadExtensionSetting("device") != null) {
-                    if (callbacks.loadExtensionSetting("device").equals("remote"))
-                        remoteRadioButton.setSelected(true);
-                    else if (callbacks.loadExtensionSetting("device").equals("usb"))
-                        usbRadioButton.setSelected(true);
-                    else
-                        localRadioButton.setSelected(true);
-                } else {
-                    remoteRadioButton.setSelected(true);
-                }
-                ButtonGroup localRemoteButtonGroup = new ButtonGroup();
-                localRemoteButtonGroup.add(remoteRadioButton);
-                localRemoteButtonGroup.add(usbRadioButton);
-                localRemoteButtonGroup.add(localRadioButton);
-                localRemotePanel.add(remoteRadioButton);
-                localRemotePanel.add(usbRadioButton);
-                localRemotePanel.add(localRadioButton);
 
                 configurationConfPanel.add(serverStatusPanel);
 //                configurationConfPanel.add(applicationStatusPanel);
@@ -904,42 +802,6 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 // **** END TRAPPING TAB
 
 
-                // **** FRIDA DEFAULT HOOKS TAB
-                final JTabbedPane tabbedPanelHooks = new JTabbedPane();
-
-                androidHooksPanel = new JPanel();
-                androidHooksPanel.setLayout(new BoxLayout(androidHooksPanel, BoxLayout.Y_AXIS));
-
-                iOSHooksPanel = new JPanel();
-                iOSHooksPanel.setLayout(new BoxLayout(iOSHooksPanel, BoxLayout.Y_AXIS));
-
-                genericHooksPanel = new JPanel();
-                genericHooksPanel.setLayout(new BoxLayout(genericHooksPanel, BoxLayout.Y_AXIS));
-
-                // Initialize default hooks
-                initializeDefaultHooks();
-
-                // Add tips to iOS hooks tab
-                JPanel iosTipsJPanel = new JPanel();
-                iosTipsJPanel.setLayout(new BoxLayout(iosTipsJPanel, BoxLayout.Y_AXIS));
-                JLabel iosTip1Label = new JLabel("* TIP: If SSL pinning escape does not work try \"SSL Kill Switch 2\" application!");
-                JLabel iosTip2Label = new JLabel("** TIP: If Jailbreak escape does not work try \"TS Protector\" or \"Liberty Lite\" applications!");
-                Font fontJLabel = iosTip1Label.getFont();
-                iosTip1Label.setFont(fontJLabel.deriveFont(fontJLabel.getStyle() | Font.BOLD));
-                iosTip2Label.setFont(fontJLabel.deriveFont(fontJLabel.getStyle() | Font.BOLD));
-                iosTipsJPanel.add(iosTip1Label);
-                iosTipsJPanel.add(iosTip2Label);
-                JPanel iOSHooksPanelWithTips = new JPanel();
-                iOSHooksPanelWithTips.setLayout(new BorderLayout());
-                iOSHooksPanelWithTips.add(iOSHooksPanel);
-                iOSHooksPanelWithTips.add(iosTipsJPanel, BorderLayout.SOUTH);
-
-                tabbedPanelHooks.add("Android", androidHooksPanel);
-                tabbedPanelHooks.add("iOS", iOSHooksPanelWithTips);
-                tabbedPanelHooks.add("Other", genericHooksPanel);
-                // **** END FRIDA DEFAULT HOOKS TAB
-
-
                 // **** BEGIN CUSTOM PLUGINS
                 JPanel customPluginPanel = new JPanel();
                 customPluginPanel.setLayout(new BoxLayout(customPluginPanel, BoxLayout.Y_AXIS));
@@ -957,7 +819,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 customPluginTypePluginPanel.setLayout(new BoxLayout(customPluginTypePluginPanel, BoxLayout.X_AXIS));
                 customPluginTypePluginPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
                 JLabel customPluginTypePluginLabel = new JLabel("Plugin Type ");
-                String[] customPluginTypePluginComboOptions = new String[]{"IHttpListener", "IMessageEditorTab", "IContextMenu", "JButton"};
+                String[] customPluginTypePluginComboOptions = new String[]{"IHttpListener", "IMessageEditorTab", "IContextMenu"};
                 customPluginTypePluginOptions = new JComboBox<String>(customPluginTypePluginComboOptions);
                 customPluginTypePluginOptions.setSelectedIndex(0);
                 customPluginTypePluginOptions.setMaximumSize(customPluginTypePluginOptions.getPreferredSize());
@@ -975,7 +837,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 JPanel customPluginExportNamePanel = new JPanel();
                 customPluginExportNamePanel.setLayout(new BoxLayout(customPluginExportNamePanel, BoxLayout.X_AXIS));
                 customPluginExportNamePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                JLabel customPluginExportNameLabel = new JLabel("Name of the Frida exported function: ");
+                JLabel customPluginExportNameLabel = new JLabel("Name of the Python exported function: ");
                 customPluginExportNameText = new JTextField(200);
                 customPluginExportNameText.setMaximumSize(customPluginExportNameText.getPreferredSize());
                 customPluginExportNamePanel.add(customPluginExportNameLabel);
@@ -1183,7 +1045,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 customPluginMessageEditorModifiedFridaFunctioPanel = new JPanel();
                 customPluginMessageEditorModifiedFridaFunctioPanel.setLayout(new BoxLayout(customPluginMessageEditorModifiedFridaFunctioPanel, BoxLayout.X_AXIS));
                 customPluginMessageEditorModifiedFridaFunctioPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                JLabel customPluginMessageEditorModifiedFridaExportNameLabel = new JLabel("Name of the Frida exported function for the edited content: ");
+                JLabel customPluginMessageEditorModifiedFridaExportNameLabel = new JLabel("Name of the Python exported function for the edited content: ");
                 customPluginMessageEditorModifiedFridaExportNameText = new JTextField(200);
                 customPluginMessageEditorModifiedFridaExportNameText.setMaximumSize(customPluginMessageEditorModifiedFridaExportNameText.getPreferredSize());
                 customPluginMessageEditorModifiedFridaFunctioPanel.add(customPluginMessageEditorModifiedFridaExportNameLabel);
@@ -1193,7 +1055,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 customPluginMessageEditorModifiedEncodeInputPanel = new JPanel();
                 customPluginMessageEditorModifiedEncodeInputPanel.setLayout(new BoxLayout(customPluginMessageEditorModifiedEncodeInputPanel, BoxLayout.X_AXIS));
                 customPluginMessageEditorModifiedEncodeInputPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                JLabel customPluginMessageEditorModifiedEncodeInputLabel = new JLabel("Encode input passed to Frida function executed on edited content: ");
+                JLabel customPluginMessageEditorModifiedEncodeInputLabel = new JLabel("Encode input passed to Python function executed on edited content: ");
                 JButton customPluginMessageEditorModifiedEncodeInputButton = new JButton("Choose encoding");
                 customPluginMessageEditorModifiedEncodeInputButton.setActionCommand("customPluginMessageEditorModifiedEncodeInputButton");
                 customPluginMessageEditorModifiedEncodeInputButton.addActionListener(BurpExtender.this);
@@ -1208,7 +1070,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 customPluginMessageEditorModifiedDecodingOutputPanel = new JPanel();
                 customPluginMessageEditorModifiedDecodingOutputPanel.setLayout(new BoxLayout(customPluginMessageEditorModifiedDecodingOutputPanel, BoxLayout.X_AXIS));
                 customPluginMessageEditorModifiedDecodingOutputPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-                JLabel customPluginMessageEditorModifiedDecodingOutputLabel = new JLabel("Decode output of Frida function executed on edited content: ");
+                JLabel customPluginMessageEditorModifiedDecodingOutputLabel = new JLabel("Decode output of Python function executed on edited content: ");
                 JButton customPluginMessageEditorModifiedDecodingOutputButton = new JButton("Choose decoding");
                 customPluginMessageEditorModifiedDecodingOutputButton.setActionCommand("customPluginMessageEditorModifiedDecodingOutputButton");
                 customPluginMessageEditorModifiedDecodingOutputButton.addActionListener(BurpExtender.this);
@@ -1398,7 +1260,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 tabbedPanel.add("Debug export", executeMethodPanel);
 
                 // *** CONSOLE
-                pluginConsoleTextArea = new JEditorPane("text/html", "<font color=\"green\"><b>*** Brida Console ***</b></font><br/><br/>");
+                pluginConsoleTextArea = new JEditorPane("text/html", "<font color=\"green\"><b>*** BurpPy Console ***</b></font><br/><br/>");
                 JScrollPane scrollPluginConsoleTextArea = new JScrollPane(pluginConsoleTextArea);
                 scrollPluginConsoleTextArea.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
                 pluginConsoleTextArea.setEditable(false);
@@ -1534,7 +1396,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 separator.setBorder(BorderFactory.createMatteBorder(3, 0, 3, 0, Color.ORANGE));
 
                 rightSplitPane.add(serverStatusButtons, gbc);
-                rightSplitPane.add(applicationStatusButtons, gbc);
+//                rightSplitPane.add(applicationStatusButtons, gbc);
                 rightSplitPane.add(startServer, gbc);
                 rightSplitPane.add(killServer, gbc);
 //                rightSplitPane.add(spawnApplication,gbc);
@@ -1545,7 +1407,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 //                rightSplitPane.add(detachApplication,gbc);
                 rightSplitPane.add(reloadScript, gbc);
 //                rightSplitPane.add(compileReloadScript,gbc);
-                rightSplitPane.add(detachAllHooks, gbc);
+//                rightSplitPane.add(detachAllHooks, gbc);
                 rightSplitPane.add(clearConsoleButton, gbc);
 
                 rightSplitPane.add(separator, gbc);
@@ -1566,7 +1428,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 rightSplitPane.add(generatePythonStubButton, gbc);
 
                 // TREE ANALYSIS
-                rightSplitPane.add(loadTreeButton, gbc);
+//                rightSplitPane.add(loadTreeButton, gbc);
 
                 // TRAP METHODS
                 rightSplitPane.add(removeAllGraphicalHooksButton, gbc);
@@ -1661,11 +1523,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                             }
                         }
 
-                        if (p.isProcessOnlyInScope()) {
-                            customPluginScopeCheckBox.setSelected(true);
-                        } else {
-                            customPluginScopeCheckBox.setSelected(false);
-                        }
+                        customPluginScopeCheckBox.setSelected(p.isProcessOnlyInScope());
 
                         if (p.getCustomPluginExecute() == CustomPlugin.CustomPluginExecuteValues.ALWAYS) {
                             customPluginExecuteWhenOptions.setSelectedIndex(0);
@@ -1678,7 +1536,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                         Object[] iHttpListenerParameters = CustomPlugin.functionParametersIHttpListener.toArray();
                         customPluginParametersOptions.setSelectedIndex(IntStream.range(0, iHttpListenerParameters.length)
-                                .filter(i -> p.getCustomPluginParameter() == (CustomPluginParameterValues) (iHttpListenerParameters[i]))
+                                .filter(i -> p.getCustomPluginParameter() == iHttpListenerParameters[i])
                                 .findFirst()
                                 .orElse(0));
                         customPluginParametersText.setText(p.getCustomPluginParameterString());
@@ -1691,7 +1549,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                         Object[] iHttpListenerFunctionOutputValues = CustomPlugin.functionOutputValuesIHttpListener.toArray();
                         customPluginOutputOptions.setSelectedIndex(IntStream.range(0, iHttpListenerFunctionOutputValues.length)
-                                .filter(i -> p.getCustomPluginFunctionOutput() == (CustomPluginFunctionOutputValues) (iHttpListenerFunctionOutputValues[i]))
+                                .filter(i -> p.getCustomPluginFunctionOutput() == iHttpListenerFunctionOutputValues[i])
                                 .findFirst()
                                 .orElse(0));
                         customPluginOutputText.setText(p.getCustomPluginFunctionOutputString());
@@ -1743,7 +1601,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                         Object[] iMessageEditorTabParameters = CustomPlugin.functionParametersIMessageEditorTab.toArray();
                         customPluginParametersOptions.setSelectedIndex(IntStream.range(0, iMessageEditorTabParameters.length)
-                                .filter(i -> p2.getCustomPluginParameter() == (CustomPluginParameterValues) (iMessageEditorTabParameters[i]))
+                                .filter(i -> p2.getCustomPluginParameter() == iMessageEditorTabParameters[i])
                                 .findFirst()
                                 .orElse(0));
                         customPluginParametersText.setText(p2.getCustomPluginParameterString());
@@ -1756,7 +1614,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                         Object[] iMessageEditorTabFunctionOutputValues = CustomPlugin.functionOutputValuesIMessageEditorTab.toArray();
                         customPluginOutputOptions.setSelectedIndex(IntStream.range(0, iMessageEditorTabFunctionOutputValues.length)
-                                .filter(i -> p2.getCustomPluginFunctionOutput() == (CustomPluginFunctionOutputValues) (iMessageEditorTabFunctionOutputValues[i]))
+                                .filter(i -> p2.getCustomPluginFunctionOutput() == iMessageEditorTabFunctionOutputValues[i])
                                 .findFirst()
                                 .orElse(0));
                         customPluginOutputText.setText(p2.getCustomPluginFunctionOutputString());
@@ -1808,7 +1666,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                         Object[] iContextMenuParameters = CustomPlugin.functionParametersIContextMenu.toArray();
                         customPluginParametersOptions.setSelectedIndex(IntStream.range(0, iContextMenuParameters.length)
-                                .filter(i -> p3.getCustomPluginParameter() == (CustomPluginParameterValues) (iContextMenuParameters[i]))
+                                .filter(i -> p3.getCustomPluginParameter() == iContextMenuParameters[i])
                                 .findFirst()
                                 .orElse(0));
                         customPluginParametersText.setText(p3.getCustomPluginParameterString());
@@ -1821,7 +1679,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                         Object[] iContextMenuFunctionOutputValues = CustomPlugin.functionOutputValuesIContextMenu.toArray();
                         customPluginOutputOptions.setSelectedIndex(IntStream.range(0, iContextMenuFunctionOutputValues.length)
-                                .filter(i -> p3.getCustomPluginFunctionOutput() == (CustomPluginFunctionOutputValues) (iContextMenuFunctionOutputValues[i]))
+                                .filter(i -> p3.getCustomPluginFunctionOutput() == iContextMenuFunctionOutputValues[i])
                                 .findFirst()
                                 .orElse(0));
                         customPluginOutputText.setText(p3.getCustomPluginFunctionOutputString());
@@ -1879,7 +1737,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                         Object[] jButtonParameters = CustomPlugin.functionParametersJButton.toArray();
                         customPluginParametersOptions.setSelectedIndex(IntStream.range(0, jButtonParameters.length)
-                                .filter(i -> p4.getCustomPluginParameter() == (CustomPluginParameterValues) (jButtonParameters[i]))
+                                .filter(i -> p4.getCustomPluginParameter() == jButtonParameters[i])
                                 .findFirst()
                                 .orElse(0));
                         customPluginParametersText.setText(p4.getCustomPluginParameterString());
@@ -1889,7 +1747,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                         Object[] jButtonFunctionOutputValues = CustomPlugin.functionOutputValuesJButton.toArray();
                         customPluginOutputOptions.setSelectedIndex(IntStream.range(0, jButtonFunctionOutputValues.length)
-                                .filter(i -> p4.getCustomPluginFunctionOutput() == (CustomPluginFunctionOutputValues) (jButtonFunctionOutputValues[i]))
+                                .filter(i -> p4.getCustomPluginFunctionOutput() == jButtonFunctionOutputValues[i])
                                 .findFirst()
                                 .orElse(0));
                         customPluginOutputText.setText(p4.getCustomPluginFunctionOutputString());
@@ -1954,7 +1812,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                         customPluginOutputDecodingPanel.setVisible(true);
                         // Plugin output encoding
                         customPluginOutputEncodingPanel.setVisible(true);
-                        // Message editor encode input to Frida function for edited content
+                        // Message editor encode input to Python function for edited content
                         customPluginMessageEditorModifiedEncodeInputPanel.setVisible(false);
                         // Message Editor Decoding Output
                         customPluginMessageEditorModifiedDecodingOutputPanel.setVisible(false);
@@ -2076,19 +1934,11 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                         // Execute
                         customPluginExecuteWhenPanel.setVisible(false);
                         // Parameter
-                        if (customPluginButtonTypeRadioFunction.isSelected()) {
-                            customPluginParametersPanel.setVisible(true);
-                        } else {
-                            customPluginParametersPanel.setVisible(false);
-                        }
+                        customPluginParametersPanel.setVisible(customPluginButtonTypeRadioFunction.isSelected());
                         DefaultComboBoxModel<String> customPluginParametersModel = new DefaultComboBoxModel<String>(CustomPlugin.functionParametersJButton.stream().map(CustomPluginParameterValues::toString).toArray(String[]::new));
                         customPluginParametersOptions.setModel(customPluginParametersModel);
                         // Parameter encoding
-                        if (customPluginButtonTypeRadioFunction.isSelected()) {
-                            customPluginParameterEncodingPanel.setVisible(true);
-                        } else {
-                            customPluginParameterEncodingPanel.setVisible(false);
-                        }
+                        customPluginParameterEncodingPanel.setVisible(customPluginButtonTypeRadioFunction.isSelected());
                         // Plugin output
                         DefaultComboBoxModel<String> customPluginOutputModel = new DefaultComboBoxModel<String>(CustomPlugin.functionOutputValuesJButton.stream().map(CustomPluginFunctionOutputValues::toString).toArray(String[]::new));
                         customPluginOutputOptions.setModel(customPluginOutputModel);
@@ -2175,90 +2025,8 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                 break;
 
-            //DEFAULT HOOKS
-            case 2:
-
-                SwingUtilities.invokeLater(new Runnable() {
-
-                    @Override
-                    public void run() {
-
-                        executeMethodButton.setVisible(false);
-                        saveSettingsToFileButton.setVisible(false);
-                        loadSettingsFromFileButton.setVisible(false);
-                        generateJavaStubButton.setVisible(false);
-                        generatePythonStubButton.setVisible(false);
-                        loadJSFileButton.setVisible(false);
-                        saveJSFileButton.setVisible(false);
-                        loadTreeButton.setVisible(false);
-                        removeAllGraphicalHooksButton.setVisible(false);
-                        enableCustomPluginButton.setVisible(false);
-                        exportCustomPluginsButton.setVisible(false);
-                        importCustomPluginsButton.setVisible(false);
-
-                    }
-
-                });
-
-                break;
-
-
-            // Tree view
-            case 3:
-
-                SwingUtilities.invokeLater(new Runnable() {
-
-                    @Override
-                    public void run() {
-
-                        executeMethodButton.setVisible(false);
-                        saveSettingsToFileButton.setVisible(false);
-                        loadSettingsFromFileButton.setVisible(false);
-                        generateJavaStubButton.setVisible(false);
-                        generatePythonStubButton.setVisible(false);
-                        loadJSFileButton.setVisible(false);
-                        saveJSFileButton.setVisible(false);
-                        loadTreeButton.setVisible(true);
-                        removeAllGraphicalHooksButton.setVisible(false);
-                        enableCustomPluginButton.setVisible(false);
-                        exportCustomPluginsButton.setVisible(false);
-                        importCustomPluginsButton.setVisible(false);
-
-                    }
-
-                });
-
-                break;
-
-            // Graphical hooks
-            case 4:
-
-                SwingUtilities.invokeLater(new Runnable() {
-
-                    @Override
-                    public void run() {
-
-                        executeMethodButton.setVisible(false);
-                        saveSettingsToFileButton.setVisible(false);
-                        loadSettingsFromFileButton.setVisible(false);
-                        generateJavaStubButton.setVisible(false);
-                        generatePythonStubButton.setVisible(false);
-                        loadJSFileButton.setVisible(false);
-                        saveJSFileButton.setVisible(false);
-                        loadTreeButton.setVisible(false);
-                        removeAllGraphicalHooksButton.setVisible(true);
-                        enableCustomPluginButton.setVisible(false);
-                        exportCustomPluginsButton.setVisible(false);
-                        importCustomPluginsButton.setVisible(false);
-
-                    }
-
-                });
-
-                break;
-
             //CUSTOM PLUGIN
-            case 5:
+            case 2:
 
                 SwingUtilities.invokeLater(new Runnable() {
 
@@ -2284,35 +2052,8 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                 break;
 
-            // GENERATE STUBS
-            case 6:
-
-                SwingUtilities.invokeLater(new Runnable() {
-
-                    @Override
-                    public void run() {
-
-                        executeMethodButton.setVisible(false);
-                        saveSettingsToFileButton.setVisible(false);
-                        loadSettingsFromFileButton.setVisible(false);
-                        generateJavaStubButton.setVisible(true);
-                        generatePythonStubButton.setVisible(true);
-                        loadJSFileButton.setVisible(false);
-                        saveJSFileButton.setVisible(false);
-                        loadTreeButton.setVisible(false);
-                        removeAllGraphicalHooksButton.setVisible(false);
-                        enableCustomPluginButton.setVisible(false);
-                        exportCustomPluginsButton.setVisible(false);
-                        importCustomPluginsButton.setVisible(false);
-
-                    }
-
-                });
-
-                break;
-
             // DEBUG EXPORT
-            case 7:
+            case 3:
 
                 SwingUtilities.invokeLater(new Runnable() {
 
@@ -2398,13 +2139,15 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
     }
 
-    private void launchPyroServer(String pythonPathEnv, String pyroServicePath) {
+    private void launchPyroServer(String pythonPathEnv, String pyroServicePath, String selfPythonFilePath) {
 
         Runtime rt = Runtime.getRuntime();
 
         String[] startServerCommand;
         String[] execEnv;
         String debugCommandToPrint;
+
+        selfPythonFilePath = selfPythonFilePath.trim();
 
         if (useVirtualEnvCheckBox.isSelected()) {
 
@@ -2414,17 +2157,17 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
             //System.getProperty("file.separator")
             if (System.getProperty("os.name").trim().toLowerCase().startsWith("win")) {
 
-                startServerCommand = new String[]{pythonPathEnv + "Scripts\\python.exe", "-i", pyroServicePath, pyroHost.getText().trim(), pyroPort.getText().trim()};
+                startServerCommand = new String[]{pythonPathEnv + "Scripts\\python.exe", "-i", pyroServicePath, pyroHost.getText().trim(), pyroPort.getText().trim(), selfPythonFilePath};
                 execEnv = new String[]{"VIRTUAL_ENV=" + pythonPathEnv, "PATH=" + pythonPathEnv + "Scripts"};
 
-                debugCommandToPrint = "\"" + pythonPathEnv + "Scripts\\python.exe\" -i \"" + pyroServicePath + "\" " + pyroHost.getText().trim() + " " + pyroPort.getText().trim();
+                debugCommandToPrint = "\"" + pythonPathEnv + "Scripts\\python.exe\" -i \"" + pyroServicePath + "\" " + pyroHost.getText().trim() + " " + pyroPort.getText().trim() + " " + selfPythonFilePath;
 
             } else {
 
-                startServerCommand = new String[]{pythonPathEnv + "bin/python", "-i", pyroServicePath, pyroHost.getText().trim(), pyroPort.getText().trim()};
+                startServerCommand = new String[]{pythonPathEnv + "bin/python", "-i", pyroServicePath, pyroHost.getText().trim(), pyroPort.getText().trim(), selfPythonFilePath};
                 execEnv = new String[]{"VIRTUAL_ENV=" + pythonPathEnv, "PATH=" + pythonPathEnv + "bin/"};
 
-                debugCommandToPrint = "\"" + pythonPathEnv + "bin/python\" -i \"" + pyroServicePath + "\" " + pyroHost.getText().trim() + " " + pyroPort.getText().trim();
+                debugCommandToPrint = "\"" + pythonPathEnv + "bin/python\" -i \"" + pyroServicePath + "\" " + pyroHost.getText().trim() + " " + pyroPort.getText().trim() + " " + selfPythonFilePath;
 
             }
 
@@ -2454,10 +2197,10 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
         } else {
 
-            startServerCommand = new String[]{pythonPathEnv, "-i", pyroServicePath, pyroHost.getText().trim(), pyroPort.getText().trim()};
+            startServerCommand = new String[]{pythonPathEnv, "-i", pyroServicePath, pyroHost.getText().trim(), pyroPort.getText().trim(), selfPythonFilePath};
             execEnv = null;
 
-            debugCommandToPrint = "\"" + pythonPathEnv + "\" -i \"" + pyroServicePath + "\" " + pyroHost.getText().trim() + " " + pyroPort.getText().trim();
+            debugCommandToPrint = "\"" + pythonPathEnv + "\" -i \"" + pyroServicePath + "\" " + pyroHost.getText().trim() + " " + pyroPort.getText().trim() + " " + selfPythonFilePath;
             printSuccessMessage("Start Pyro server command: " + debugCommandToPrint);
 
         }
@@ -2603,17 +2346,17 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
         callbacks.saveExtensionSetting("pythonPath", pythonPathVenv.getText().trim());
         callbacks.saveExtensionSetting("pyroHost", pyroHost.getText().trim());
         callbacks.saveExtensionSetting("pyroPort", pyroPort.getText().trim());
-        callbacks.saveExtensionSetting("fridaCompilePath", fridaCompilePath.getText().trim());
-        callbacks.saveExtensionSetting("fridaCompileOldCheckBox", (fridaCompileOldCheckBox.isSelected() ? "true" : "false"));
+//        callbacks.saveExtensionSetting("fridaCompilePath", fridaCompilePath.getText().trim());
+//        callbacks.saveExtensionSetting("fridaCompileOldCheckBox", (fridaCompileOldCheckBox.isSelected() ? "true" : "false"));
         callbacks.saveExtensionSetting("fridaPath", fridaPath.getText().trim());
-        callbacks.saveExtensionSetting("applicationId", applicationId.getText().trim());
-        if (remoteRadioButton.isSelected()) {
-            callbacks.saveExtensionSetting("device", "remote");
-        } else if (usbRadioButton.isSelected()) {
-            callbacks.saveExtensionSetting("device", "usb");
-        } else {
-            callbacks.saveExtensionSetting("device", "local");
-        }
+//        callbacks.saveExtensionSetting("applicationId", applicationId.getText().trim());
+//        if (remoteRadioButton.isSelected()) {
+//            callbacks.saveExtensionSetting("device", "remote");
+//        } else if (usbRadioButton.isSelected()) {
+//            callbacks.saveExtensionSetting("device", "usb");
+//        } else {
+//            callbacks.saveExtensionSetting("device", "local");
+//        }
         callbacks.saveExtensionSetting("executeMethodName", executeMethodName.getText().trim());
         int sizeArguments = executeMethodInsertedArgumentList.getSize();
         callbacks.saveExtensionSetting("executeMethodSizeArguments", Integer.toString(sizeArguments));
@@ -2667,7 +2410,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 int sizeArguments = executeMethodInsertedArgumentList.getSize();
                 fw.write("executeMethodSizeArguments:" + sizeArguments + "\n");
                 for (int i = 0; i < sizeArguments; i++) {
-                    fw.write("executeMethodArgument" + i + ":" + ((String) executeMethodInsertedArgumentList.getElementAt(i)) + "\n");
+                    fw.write("executeMethodArgument" + i + ":" + executeMethodInsertedArgumentList.getElementAt(i) + "\n");
                 }
 
                 fw.close();
@@ -2987,147 +2730,17 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
             });
 
 
-        } else if (command.equals("spawnApplication") && serverStarted) {
-
-            if (!(new File(fridaPath.getText().trim() + System.getProperty("file.separator") + "bridaGeneratedCompiledOutput.js")).exists()) {
-
-                // Brida compiled file does not exist. Compiling it...
-                if (!compileFridaCode(fridaCompilePath.getText().trim(), fridaPath.getText().trim())) {
-                    printException(null, "Error during frida-compile. Aborting.");
-                    return;
-                }
-
-            }
-
-            spawnApplication(true);
-
-        } else if (command.equals("compileSpawnApplication") && serverStarted) {
-
-            if (!compileFridaCode(fridaCompilePath.getText().trim(), fridaPath.getText().trim())) {
-                printException(null, "Error during frida-compile. Aborting.");
-                return;
-            }
-
-            spawnApplication(true);
-
-        } else if (command.equals("attachApplication") && serverStarted) {
-
-            if (!(new File(fridaPath.getText().trim() + System.getProperty("file.separator") + "bridaGeneratedCompiledOutput.js")).exists()) {
-
-                // Brida compiled file does not exist. Compiling it...
-                if (!compileFridaCode(fridaCompilePath.getText().trim(), fridaPath.getText().trim())) {
-                    printException(null, "Error during frida-compile. Aborting.");
-                    return;
-                }
-
-            }
-
-            spawnApplication(false);
-
-        } else if (command.equals("compileAttachApplication") && serverStarted) {
-
-            if (!compileFridaCode(fridaCompilePath.getText().trim(), fridaPath.getText().trim())) {
-                printException(null, "Error during frida-compile. Aborting.");
-                return;
-            }
-
-            spawnApplication(false);
-
-        } else if (command.equals("reloadScript") && serverStarted && applicationSpawned) {
+        } else if (command.equals("reloadScript")) {
+            printSuccessMessage("reload Python");
 
             try {
-
-                //pyroBridaService.call("reload_script");
-                executePyroCall(pyroBridaService, "reload_script", new Object[]{});
-
-                printSuccessMessage("Reloading script executed");
-
+                ActionEvent e = new ActionEvent(this, 0, "killServer");
+                this.actionPerformed(e);
+                e = new ActionEvent(this, 0, "startServer");
+                this.actionPerformed(e);
             } catch (final Exception e) {
 
                 printException(e, "Exception reloading script");
-
-            }
-
-        } else if (command.equals("compileReloadScript") && serverStarted && applicationSpawned) {
-
-            if (!compileFridaCode(fridaCompilePath.getText().trim(), fridaPath.getText().trim())) {
-                return;
-            }
-
-            try {
-
-                //pyroBridaService.call("reload_script");
-                executePyroCall(pyroBridaService, "reload_script", new Object[]{});
-
-                printSuccessMessage("Reloading script executed");
-
-            } catch (final Exception e) {
-
-                printException(e, "Exception reloading script");
-
-            }
-
-        } else if (command.equals("killApplication") && serverStarted && applicationSpawned) {
-
-            try {
-                //pyroBridaService.call("disconnect_application");
-                executePyroCall(pyroBridaService, "disconnect_application", new Object[]{});
-                applicationSpawned = false;
-
-                SwingUtilities.invokeLater(new Runnable() {
-
-                    @Override
-                    public void run() {
-
-                        applicationStatus.setText("");
-                        applicationStatusButtons.setText("");
-                        try {
-                            documentApplicationStatus.insertString(0, "NOT hooked", redStyle);
-                            documentApplicationStatusButtons.insertString(0, "App not hooked", redStyle);
-                        } catch (BadLocationException e) {
-                            printException(e, "Exception setting labels");
-                        }
-
-                    }
-                });
-
-                printSuccessMessage("Killing application executed");
-
-            } catch (final Exception e) {
-
-                printException(e, "Exception killing application");
-
-            }
-
-        } else if (command.equals("detachApplication") && serverStarted && applicationSpawned) {
-
-            try {
-                //pyroBridaService.call("detach_application");
-                executePyroCall(pyroBridaService, "detach_application", new Object[]{});
-                applicationSpawned = false;
-
-                SwingUtilities.invokeLater(new Runnable() {
-
-                    @Override
-                    public void run() {
-
-                        applicationStatus.setText("");
-                        applicationStatusButtons.setText("");
-                        try {
-                            documentApplicationStatus.insertString(0, "NOT hooked", redStyle);
-                            documentApplicationStatusButtons.insertString(0, "App not hooked", redStyle);
-                        } catch (BadLocationException e) {
-                            printException(e, "Exception setting labels");
-                        }
-
-                    }
-                });
-
-                printSuccessMessage("Detach application executed");
-
-            } catch (final Exception e) {
-
-                printException(e, "Exception detaching application");
 
             }
 
@@ -3162,11 +2775,10 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
             try {
                 //pyroBridaService.call("shutdown");
-                executePyroCall(pyroBridaService, "shutdown", new Object[]{});
+//                executePyroCall(pyroBridaService, "shutdown", new Object[]{});
                 pyroServerProcess.destroy();
                 pyroBridaService.close();
                 serverStarted = false;
-                applicationSpawned = false;
 
                 SwingUtilities.invokeLater(new Runnable() {
 
@@ -3180,8 +2792,8 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                         try {
                             documentServerStatus.insertString(0, "NOT running", redStyle);
                             documentServerStatusButtons.insertString(0, "Server stopped", redStyle);
-                            documentApplicationStatus.insertString(0, "NOT hooked", redStyle);
-                            documentApplicationStatusButtons.insertString(0, "App not hooked", redStyle);
+//                            documentApplicationStatus.insertString(0, "NOT hooked", redStyle);
+//                            documentApplicationStatusButtons.insertString(0, "App not hooked", redStyle);
                         } catch (BadLocationException e) {
                             printException(e, "Exception setting labels");
                         }
@@ -3203,8 +2815,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
             savePersistentSettings();
 
             try {
-
-                launchPyroServer(pythonPathVenv.getText().trim(), pythonScript);
+                launchPyroServer(pythonPathVenv.getText().trim(), pythonScript, fridaPath.getText().trim());
 
             } catch (final Exception e) {
 
@@ -3223,7 +2834,8 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                     arguments[i] = (String) (executeMethodInsertedArgumentList.getElementAt(i));
                 }
 
-                //final String s = (String)(pyroBridaService.call("callexportfunction",executeMethodName.getText().trim(),arguments));
+                printJSMessage("*** python call " + executeMethodName.getText().trim());
+//                final String s = (String)(pyroBridaService.call("callexportfunction",executeMethodName.getText().trim(),arguments));
                 final String s = (String) (executePyroCall(pyroBridaService, "callexportfunction", new Object[]{executeMethodName.getText().trim(), arguments}));
 
                 printJSMessage("*** Output " + executeMethodName.getText().trim() + ":");
@@ -3839,11 +3451,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
             // Hook or function (JButton only)
             boolean hookOrFunction = false;
             if (pluginType == CustomPlugin.CustomPluginType.JBUTTON) {
-                if (customPluginButtonTypeRadioFunction.isSelected()) {
-                    hookOrFunction = false;
-                } else {
-                    hookOrFunction = true;
-                }
+                hookOrFunction = !customPluginButtonTypeRadioFunction.isSelected();
             }
 
             // Parameters
@@ -4064,7 +3672,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                             } else if (CustomPlugin.CustomPluginType.values()[Integer.parseInt(data[0])] == CustomPlugin.CustomPluginType.JBUTTON && data.length >= 14) {
 
                                 BridaButtonPlugin importedPlugin = new BridaButtonPlugin(Integer.parseInt(data[1]),
-                                        (data[2].equals("true") ? true : false),
+                                        (data[2].equals("true")),
                                         this,
                                         new String(Base64.decodeBase64(data[3])),
                                         new String(Base64.decodeBase64(data[4])),
@@ -4093,7 +3701,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                                 }
 
                                 BridaHttpListenerPlugin importedPlugin = new BridaHttpListenerPlugin(importedPluginToolsList,
-                                        (data[2].equals("true") ? true : false),
+                                        (data[2].equals("true")),
                                         this,
                                         new String(Base64.decodeBase64(data[3])),
                                         new String(Base64.decodeBase64(data[4])),
@@ -4239,7 +3847,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 return hex.decode(input);
             }
 
-            private Hex hex = new Hex("ASCII");
+            private final Hex hex = new Hex("ASCII");
         },
         URL_ENCODING {
             public String toString() {
@@ -4247,11 +3855,11 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
             }
 
             public byte[] encode(byte[] input) throws IOException {
-                return URLEncoder.encode(new String(input, "ISO-8859-1"), "ISO-8859-1").getBytes();
+                return URLEncoder.encode(new String(input, StandardCharsets.ISO_8859_1), "ISO-8859-1").getBytes();
             }
 
             public byte[] decode(byte[] input) throws IOException {
-                return URLDecoder.decode(new String(input, "ISO-8859-1"), "ISO-8859-1").getBytes();
+                return URLDecoder.decode(new String(input, StandardCharsets.ISO_8859_1), "ISO-8859-1").getBytes();
             }
         };
 
@@ -4298,7 +3906,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
         addedTransformationsListScrollPane.setMaximumSize(addedTransformationsListScrollPane.getPreferredSize());
 
         //2. Optional: What happens when the frame closes?
-        frame.addWindowListener((WindowListener) new WindowAdapter() {
+        frame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
 
@@ -4598,7 +4206,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                         type = "export";
                         grandparentNode = (DefaultMutableTreeNode) parentNode.getParent();
-                        pattern = (String) grandparentNode.getUserObject() + "!" + ((String) clickedNode.getUserObject()).replace("function: ", "");
+                        pattern = grandparentNode.getUserObject() + "!" + ((String) clickedNode.getUserObject()).replace("function: ", "");
 
                     }
 
@@ -4704,7 +4312,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                         type = "export";
                         grandparentNode = (DefaultMutableTreeNode) parentNode.getParent();
-                        pattern = (String) grandparentNode.getUserObject() + "!" + ((String) clickedNode.getUserObject()).replace("function: ", "");
+                        pattern = grandparentNode.getUserObject() + "!" + ((String) clickedNode.getUserObject()).replace("function: ", "");
 
                     }
 
@@ -4925,7 +4533,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 newConsoleText = newConsoleText + "<b>" + message + "</b><br/>";
 
                 if (e != null) {
-                    newConsoleText = newConsoleText + e.toString() + "<br/>";
+                    newConsoleText = newConsoleText + e + "<br/>";
                     //consoleText = consoleText + e.getMessage() + "<br/>";
                     StackTraceElement[] exceptionElements = e.getStackTrace();
                     for (int i = 0; i < exceptionElements.length; i++) {
@@ -4959,7 +4567,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
             try {
                 //pyroBridaService.call("shutdown");
-                executePyroCall(pyroBridaService, "shutdown", new Object[]{});
+//                executePyroCall(pyroBridaService, "shutdown", new Object[]{});
                 pyroServerProcess.destroy();
                 pyroBridaService.close();
 

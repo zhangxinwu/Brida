@@ -161,7 +161,7 @@ public abstract class CustomPlugin {
     		CustomPluginParameterValues.POPUP);
     
     public static enum CustomPluginFunctionOutputValues {
-    	BRIDA ("print in Brida console"),
+    	BRIDA ("print in BurpPy console"),
     	POPUP ("print in popup"),
     	CONTEXT ("replace highlighted value in request/response"),
     	REGEX ("replace in request/response with regex (with parenthesys)"),
@@ -259,7 +259,7 @@ public abstract class CustomPlugin {
 				ret = (String)mainPlugin.executePyroCall(pp,"callexportfunction",new Object[] {customPluginExportedFunctionName,parameters});
 				pp.close();
 			} catch(Exception e) {
-				mainPlugin.printException(e,"Error when calling Frida exported function " + customPluginExportedFunctionName + " through Pyro in custom plugin");
+				mainPlugin.printException(e,"Error when calling Python exported function " + customPluginExportedFunctionName + " through Pyro in custom plugin");
 			}   
 			
 			// Handle output

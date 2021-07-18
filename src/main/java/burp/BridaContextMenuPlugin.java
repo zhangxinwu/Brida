@@ -157,10 +157,10 @@ public class BridaContextMenuPlugin extends CustomPlugin implements IContextMenu
 			
 			if(getCustomPluginFunctionOutput() == CustomPluginFunctionOutputValues.BRIDA) {
 				
-				getMainPlugin().printSuccessMessage("* Brida exported function " + getCustomPluginExportedFunctionName() + " output: " + ret);
+				getMainPlugin().printSuccessMessage("* Python exported function " + getCustomPluginExportedFunctionName() + " output: " + ret);
 				
 				// DEBUG print
-				printToExternalDebugFrame("** Output to Brida console\n\n");
+				printToExternalDebugFrame("** Output to BurpPy console\n\n");
 				printToExternalDebugFrame("*** END ***\n\n");
 				
 			} else if(getCustomPluginFunctionOutput() == CustomPluginFunctionOutputValues.POPUP) {
@@ -259,21 +259,21 @@ public class BridaContextMenuPlugin extends CustomPlugin implements IContextMenu
 						}
 						
 					} else {
-						getMainPlugin().printException(null,"No match in supplied output REGEX. Outputting to Brida console.");
-						getMainPlugin().printSuccessMessage("* Brida exported function " + getCustomPluginExportedFunctionName() + " output: " + ret);
+						getMainPlugin().printException(null,"No match in supplied output REGEX. Outputting to BurpPy console.");
+						getMainPlugin().printSuccessMessage("* Python exported function " + getCustomPluginExportedFunctionName() + " output: " + ret);
 						
 						// DEBUG print
-						printToExternalDebugFrame("** Output to Brida console because REGEX did not match\n\n");
+						printToExternalDebugFrame("** Output to BurpPy console because REGEX did not match\n\n");
 						printToExternalDebugFrame("*** END ***\n\n");
 					}	
 					
 				} else {
 					
-					getMainPlugin().printException(null,"Can't replace a non-editable content. Outputting to Brida console.");
-					getMainPlugin().printSuccessMessage("* Brida exported function " + getCustomPluginExportedFunctionName() + " output: " + ret);
+					getMainPlugin().printException(null,"Can't replace a non-editable content. Outputting to BurpPy console.");
+					getMainPlugin().printSuccessMessage("* Python exported function " + getCustomPluginExportedFunctionName() + " output: " + ret);
 					
 					// DEBUG print
-					printToExternalDebugFrame("** Output to Brida console because the message is NON-editable\n\n");
+					printToExternalDebugFrame("** Output to BurpPy console because the message is NON-editable\n\n");
 					printToExternalDebugFrame("*** END ***\n\n");
 					
 				}				

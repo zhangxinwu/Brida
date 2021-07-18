@@ -1,107 +1,46 @@
 # -*- coding: utf-8 -*-
-import frida
-import codecs
 import Pyro4
 import sys
+import importlib.util
+import os
 
-#reload(sys)   
-#sys.setdefaultencoding('utf-8')
+
+# reload(sys)
+# sys.setdefaultencoding('utf-8')
 
 class Unbuffered(object):
-   def __init__(self, stream):
-       self.stream = stream
-   def write(self, data):
-       self.stream.write(data)
-       self.stream.flush()
-   def writelines(self, datas):
-       self.stream.writelines(datas)
-       self.stream.flush()
-   def __getattr__(self, attr):
-       return getattr(self.stream, attr)
+    def __init__(self, stream):
+        self.stream = stream
+
+    def write(self, data):
+        self.stream.write(data)
+        self.stream.flush()
+
+    def writelines(self, datas):
+        self.stream.writelines(datas)
+        self.stream.flush()
+
+    def __getattr__(self, attr):
+        return getattr(self.stream, attr)
+
+
+def path_import(absolute_path):
+    spec = importlib.util.spec_from_file_location(absolute_path, absolute_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
 
 @Pyro4.expose
 class BridaServicePyro:
-    def __init__(self, daemon):
+    def __init__(self, daemon, pyfile):
+        sys.path.append(os.path.dirname(pyfile))
         self.daemon = daemon
-
-    def attach_application(self,pid,frida_script,device):
-
-        self.frida_script = frida_script
-
-        if pid.isnumeric():
-            self.pid = int(pid)
-        else:
-            self.pid = pid
-
-        if device == 'remote':
-            self.device = frida.get_remote_device()
-        elif device == 'usb':
-            self.device = frida.get_usb_device()
-        else:
-            self.device = frida.get_local_device()
-
-        self.session = self.device.attach(self.pid)
-
-        with codecs.open(self.frida_script, 'r', 'utf-8') as f:
-            source = f.read()
-
-        self.script = self.session.create_script(source)
-        self.script.load()
-
-        return    
-
-    def spawn_application(self,application_id,frida_script,device):
-
-        self.application_id = application_id
-        self.frida_script = frida_script
-
-        if device == 'remote':
-            self.device = frida.get_remote_device()
-        elif device == 'usb':
-            self.device = frida.get_usb_device()
-        else:
-            self.device = frida.get_local_device()
-
-        self.pid = self.device.spawn([self.application_id])
-
-        self.session = self.device.attach(self.pid)
-
-        with codecs.open(self.frida_script, 'r', 'utf-8') as f:
-            source = f.read()
-
-        self.script = self.session.create_script(source)
-        self.script.load()
-
-        return
-
-    def resume_application(self):
-
-        self.device.resume(self.pid)
-
-        return
-
-    def reload_script(self):
-
-        with codecs.open(self.frida_script, 'r', 'utf-8') as f:
-            source = f.read()
-
-        self.script = self.session.create_script(source)
-        self.script.load()
-
-        return
-
-    def disconnect_application(self):
-
-        self.device.kill(self.pid)
-        return
-
-    def detach_application(self):
-
-        self.session.detach()
-        return
+        self.pyfile = pyfile
+        self.script = path_import(self.pyfile)
 
     def callexportfunction(self, methodName, args):
-        method_to_call = getattr(self.script.exports, methodName)
+        method_to_call = getattr(self.script, methodName)
 
         # Take the Java list passed as argument and create a new variable list of argument
         # (necessary for bridge Python - Java, I think)
@@ -117,17 +56,18 @@ class BridaServicePyro:
         print('shutting down...')
         self.daemon.shutdown()
 
+
 # Disable python buffering (cause issues when communicating with Java...)
 sys.stdout = Unbuffered(sys.stdout)
 sys.stderr = Unbuffered(sys.stderr)
 
 host = sys.argv[1]
 port = int(sys.argv[2])
-daemon = Pyro4.Daemon(host=host,port=port)
+daemon = Pyro4.Daemon(host=host, port=port)
 
-#daemon = Pyro4.Daemon(host='127.0.0.1',port=9999)
-bs = BridaServicePyro(daemon)
-uri = daemon.register(bs,objectId='BridaServicePyro')
+# daemon = Pyro4.Daemon(host='127.0.0.1',port=9999)
+bs = BridaServicePyro(daemon, sys.argv[3])
+uri = daemon.register(bs, objectId='BridaServicePyro')
 
 print("Ready.")
 daemon.requestLoop()

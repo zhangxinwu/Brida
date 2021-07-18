@@ -188,10 +188,10 @@ public class BridaHttpListenerPlugin extends CustomPlugin implements IHttpListen
 		printToExternalDebugFrame("\n\n");
 		
 		if(getCustomPluginFunctionOutput() == CustomPluginFunctionOutputValues.BRIDA) {
-			getMainPlugin().printSuccessMessage("* Brida exported function " + getCustomPluginExportedFunctionName() + " output: " + ret);
+			getMainPlugin().printSuccessMessage("* Python exported function " + getCustomPluginExportedFunctionName() + " output: " + ret);
 			
 			// DEBUG print
-			printToExternalDebugFrame("** Output to Brida console\n\n");
+			printToExternalDebugFrame("** Output to BurpPy console\n\n");
 				
 		} else if(getCustomPluginFunctionOutput() == CustomPluginFunctionOutputValues.HEADERS) {
 						
@@ -281,11 +281,11 @@ public class BridaHttpListenerPlugin extends CustomPlugin implements IHttpListen
 				
 			} else {
 				
-				getMainPlugin().printException(null,"No match found in supplied output REGEX. Outputting to Brida console.");
-				getMainPlugin().printSuccessMessage("* Brida exported function " + getCustomPluginExportedFunctionName() + " output: " + ret);
+				getMainPlugin().printException(null,"No match found in supplied output REGEX. Outputting to BurpPy console.");
+				getMainPlugin().printSuccessMessage("* Python exported function " + getCustomPluginExportedFunctionName() + " output: " + ret);
 				
 				// DEBUG print
-				printToExternalDebugFrame("** Output to Brida console because REGEX did not match\n\n");
+				printToExternalDebugFrame("** Output to BurpPy console because REGEX did not match\n\n");
 				
 			}								
 		}

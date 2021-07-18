@@ -22,7 +22,7 @@ public class BridaMessageEditorPlugin extends CustomPlugin implements IMessageEd
 	
     public static enum BridaMessageEditorPluginOutputLocation {
     	NONE ("Discard (view only mode)"),
-    	CONSOLE ("Print in Brida console and return original request/response"),
+    	CONSOLE ("Print in BurpPy console and return original request/response"),
     	COMPLETE_RECALCULATE ("Replace complete request/response (length updated)"),
     	COMPLETE_NOT_RECALCULATE ("Replace complete request/response (length NOT updated)"),
     	BODY ("Replace request/response body"),
@@ -242,7 +242,7 @@ public class BridaMessageEditorPlugin extends CustomPlugin implements IMessageEd
 						ret = (String)getMainPlugin().executePyroCall(pp,"callexportfunction",new Object[] {customPluginEditedContentFridaFunctionName,parameters});
 						pp.close();
 					} catch(Exception e) {
-						getMainPlugin().printException(e,"Error when calling Frida exported function " + customPluginEditedContentFridaFunctionName + " through Pyro in custom plugin");
+						getMainPlugin().printException(e,"Error when calling Python exported function " + customPluginEditedContentFridaFunctionName + " through Pyro in custom plugin");
 						return currentMessage;
 					}
 										
@@ -265,7 +265,7 @@ public class BridaMessageEditorPlugin extends CustomPlugin implements IMessageEd
 							getMainPlugin().printSuccessMessage(customPluginEditedContentOutputEncoded);
 
 							// DEBUG print
-							printToExternalDebugFrame("** Output to Brida console and returned original request/response\n\n");
+							printToExternalDebugFrame("** Output to BurpPy console and returned original request/response\n\n");
 							printToExternalDebugFrame("*** END EDITED TAB ***\n\n");
 							
 							return currentMessage;
@@ -334,12 +334,12 @@ public class BridaMessageEditorPlugin extends CustomPlugin implements IMessageEd
 								return newHttpMessage.getBytes();
 								
 							} else {
-								getMainPlugin().printException(null,"No group found in REGEX for edited content of IMessageEditor tab " + tabCaption + ". Printing the result in Brida console and returning original request/response.");
+								getMainPlugin().printException(null,"No group found in REGEX for edited content of IMessageEditor tab " + tabCaption + ". Printing the result in BurpPy console and returning original request/response.");
 								getMainPlugin().printSuccessMessage("Return value of edited function " + tabCaption);
 								getMainPlugin().printSuccessMessage(customPluginEditedContentOutputEncoded);
 								
 								// DEBUG print
-								printToExternalDebugFrame("** Output to Brida console and returning original " + (isRequest ? "request" : "response") + " because REGEX did not match\n\n");
+								printToExternalDebugFrame("** Output to BurpPy console and returning original " + (isRequest ? "request" : "response") + " because REGEX did not match\n\n");
 								printToExternalDebugFrame("*** END EDITED TAB ***\n\n");
 								
 								return currentMessage;
@@ -349,10 +349,10 @@ public class BridaMessageEditorPlugin extends CustomPlugin implements IMessageEd
 						
 					} else {
 						
-						getMainPlugin().printException(null,"Frida exported function " + customPluginEditedContentFridaFunctionName + " returns an empty response. Returning original message from IMessageEditorTab");
+						getMainPlugin().printException(null,"Python exported function " + customPluginEditedContentFridaFunctionName + " returns an empty response. Returning original message from IMessageEditorTab");
 						
 						// DEBUG print
-						printToExternalDebugFrame("** Frida function returns no output\n\n");
+						printToExternalDebugFrame("** Python function returns no output\n\n");
 						printToExternalDebugFrame("*** END EDITED TAB ***\n\n");						
 						
 						return currentMessage;
@@ -360,7 +360,7 @@ public class BridaMessageEditorPlugin extends CustomPlugin implements IMessageEd
 					}
 					
 				} else {
-					getMainPlugin().printException(null,"Error when calling Frida exported function " + customPluginEditedContentFridaFunctionName + " through Pyro in custom plugin. First start Pyro server and spawn application!");
+					getMainPlugin().printException(null,"Error when calling Python exported function " + customPluginEditedContentFridaFunctionName + " through Pyro in custom plugin. First start Pyro server and spawn application!");
 					return currentMessage;
 				}
 				
