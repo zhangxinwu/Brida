@@ -213,7 +213,7 @@ public abstract class CustomPlugin {
     public boolean isPluginEnabled(byte[] requestResponseBytes, boolean isRequest) {
     	
     	// If all is enabled
-    	if(mainPlugin.serverStarted && mainPlugin.applicationSpawned) {
+    	if(mainPlugin.serverStarted) {
     		
     		// If we want inspect request/response/all
 			if(customPluginExecuteOn == CustomPluginExecuteOnValues.ALL || 
@@ -248,7 +248,7 @@ public abstract class CustomPlugin {
     public String callFrida(String[] parameters) {
     	
     	// If all is enabled
-    	if(mainPlugin.serverStarted && mainPlugin.applicationSpawned) {
+    	if(mainPlugin.serverStarted) {
     	
 	    	// Call Brida						
 			String pyroUrl = "PYRO:BridaServicePyro@" + mainPlugin.pyroHost.getText().trim() + ":" + mainPlugin.pyroPort.getText().trim();

@@ -4586,7 +4586,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
     public boolean removeButtonFromHooksAndFunctions(JPanel buttonPanelToRemove, DefaultHook dh) {
 
         // Disable the hook, if enabled and if possible
-        if (dh.isEnabled() && dh.isInterceptorHook() && applicationSpawned) {
+        if (dh.isEnabled() && dh.isInterceptorHook()) {
             printException(null, "Could not unload a single hook while application is running. Detach hook first by stopping application or by detatching all the hooks and then remove the button");
             return false;
         } else if (dh.isEnabled() && dh.isInterceptorHook()) {

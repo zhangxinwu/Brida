@@ -105,7 +105,7 @@ public class BridaContextMenuPlugin extends CustomPlugin implements IContextMenu
 	public void executeAction() {
 
 		// If all is enabled
-    	if(getMainPlugin().serverStarted && getMainPlugin().applicationSpawned) {
+    	if(getMainPlugin().serverStarted) {
 		
 			String[] parameters;
 			
@@ -324,7 +324,7 @@ public class BridaContextMenuPlugin extends CustomPlugin implements IContextMenu
 						
     	} else {
     		
-    		getMainPlugin().printException(null, "Context Brida plugin not callable. Start pyro and spwan application first.");
+    		getMainPlugin().printException(null, "Context BurpPy plugin not callable. ");
     		
     	}
 		

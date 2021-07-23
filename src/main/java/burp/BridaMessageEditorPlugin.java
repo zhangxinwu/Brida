@@ -225,7 +225,7 @@ public class BridaMessageEditorPlugin extends CustomPlugin implements IMessageEd
 				String[] parameters = new String[] {encodeCustomPluginValue(editedContent,customPluginEditedContentEncodingFridaInput, getMainPlugin())};
 
 				// Call frida
-				if(getMainPlugin().serverStarted && getMainPlugin().applicationSpawned) {
+				if(getMainPlugin().serverStarted) {
 					
 					// DEBUG print
 					printToExternalDebugFrame("*** START EDITED TAB ***\n\n");
