@@ -114,6 +114,7 @@
 	    <version>1.23</version>
 	</dependency> 
 	
+    <!-- https://github.com/federicodotta/RSyntaxTextArea/releases/download/2.6.1.edited/rsyntaxtextarea-2.6.1.edited.jar -->
 	<!-- Local dependency that must be installed locally with Maven -->
 	<dependency>
 	    <groupId>com.fifesoft</groupId>

@@ -513,7 +513,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                         pythonPathVenv.setText("");
                     } else {
                         if (System.getProperty("os.name").startsWith("Windows")) {
-                            pythonPathVenv.setText("C:\\python27\\python");
+                            pythonPathVenv.setText("C:\\python27\\python.exe");
                         } else {
                             pythonPathVenv.setText("/usr/bin/python");
                         }
@@ -562,9 +562,9 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                     fridaPath.setText(callbacks.loadExtensionSetting("fridaPath"));
                 else {
                     if (System.getProperty("os.name").startsWith("Windows")) {
-                        fridaPath.setText("C:\\burp\\brida\\");
+                        fridaPath.setText("C:\\burp\\test.py");
                     } else {
-                        fridaPath.setText("/opt/burp/brida/");
+                        fridaPath.setText("/opt/burp/test.py");
                     }
                 }
                 fridaPath.setMaximumSize(fridaPath.getPreferredSize());
@@ -1449,6 +1449,9 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                 callbacks.addSuiteTab(BurpExtender.this);
 
+                // restore plugins
+                ActionEvent e = new ActionEvent(this, 0, "importPlugins");
+                actionPerformed(e);
             }
 
         });
@@ -2395,16 +2398,6 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 fw.write("pythonPath:" + pythonPathVenv.getText().trim() + "\n");
                 fw.write("pyroHost:" + pyroHost.getText().trim() + "\n");
                 fw.write("pyroPort:" + pyroPort.getText().trim() + "\n");
-                fw.write("fridaCompilePath:" + fridaCompilePath.getText().trim() + "\n");
-                fw.write("fridaCompileOldCheckBox:" + (fridaCompileOldCheckBox.isSelected() ? "true" : "false") + "\n");
-                fw.write("fridaPath:" + fridaPath.getText().trim() + "\n");
-                fw.write("applicationId:" + applicationId.getText().trim() + "\n");
-                if (remoteRadioButton.isSelected())
-                    fw.write("device:remote\n");
-                else if (usbRadioButton.isSelected())
-                    fw.write("device:usb\n");
-                else
-                    fw.write("device:local\n");
                 fw.write("executeMethodName:" + executeMethodName.getText().trim() + "\n");
 
                 int sizeArguments = executeMethodInsertedArgumentList.getSize();
@@ -2412,6 +2405,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                 for (int i = 0; i < sizeArguments; i++) {
                     fw.write("executeMethodArgument" + i + ":" + executeMethodInsertedArgumentList.getElementAt(i) + "\n");
                 }
+                fw.write("plugins:" + this.callbacks.loadExtensionSetting("plugins")+"\n");
 
                 fw.close();
 
@@ -2516,6 +2510,10 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
                                 break;
                             case "executeMethodName":
                                 executeMethodName.setText(lineParts[1]);
+                                break;
+                            case "plugins":
+                                this.callbacks.saveExtensionSetting("plugins", lineParts[1]);
+                                actionPerformed(new ActionEvent(this, 0, "importPlugins"));
                                 break;
                             default:
                                 if (lineParts[0].startsWith("executeMethodArgument")) {
@@ -3567,6 +3565,14 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
             synchronized (customPlugins) {
                 int customPluginsOldSize = customPlugins.size();
                 customPlugins.add(newCustomPlugin);
+
+                String result = "";
+                for (int i = 0; i < customPlugins.size(); i++) {
+                    result = result + customPlugins.get(i).exportPlugin() + "\n";
+                }
+                String encode = new String(Base64.encodeBase64(result.getBytes()));
+                this.callbacks.saveExtensionSetting("plugins", encode);
+
                 ((CustomPluginsTableModel) (customPluginsTable.getModel())).fireTableRowsInserted(customPluginsOldSize, customPlugins.size() - 1);
             }
 
@@ -3610,24 +3616,31 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
             }
 
         } else if (command.startsWith("importPlugins")) {
+            BufferedReader csvReader = null;
 
-            JFrame parentFrameImportPlugins = new JFrame();
-            JFileChooser fileChooserImportPlugins = new JFileChooser();
-            fileChooserImportPlugins.setDialogTitle("Import custom plugins from file");
-            fileChooserImportPlugins.setCurrentDirectory(new File(fridaPath.getText().trim()));
-            int userSelectionImportPlugins = fileChooserImportPlugins.showOpenDialog(parentFrameImportPlugins);
+            if (event.getID() == 0) {
+                String res = this.callbacks.loadExtensionSetting("plugins");
+                String result = new String(Base64.decodeBase64(res));
+                csvReader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(result.getBytes())));
+            } else {
+                JFrame parentFrameImportPlugins = new JFrame();
+                JFileChooser fileChooserImportPlugins = new JFileChooser();
+                fileChooserImportPlugins.setDialogTitle("Import custom plugins from file");
+                fileChooserImportPlugins.setCurrentDirectory(new File(fridaPath.getText().trim()));
+                int userSelectionImportPlugins = fileChooserImportPlugins.showOpenDialog(parentFrameImportPlugins);
 
-            if (userSelectionImportPlugins == JFileChooser.APPROVE_OPTION) {
-
-                File filenameImportPlugins = fileChooserImportPlugins.getSelectedFile();
-
-                String row;
-                BufferedReader csvReader;
-
+                if (userSelectionImportPlugins == JFileChooser.APPROVE_OPTION) {
+                    File filenameImportPlugins = fileChooserImportPlugins.getSelectedFile();
+                    try {
+                        csvReader = new BufferedReader(new FileReader(filenameImportPlugins));
+                    } catch (FileNotFoundException e) {
+                        printException(e, "Import plugins: file not found");
+                    }
+                }
+            }
+            if (csvReader != null)
                 try {
-
-                    csvReader = new BufferedReader(new FileReader(filenameImportPlugins));
-
+                    String row;
                     int currentRow = 0;
 
                     List<CustomPlugin> customPlugins = ((CustomPluginsTableModel) (customPluginsTable.getModel())).getCustomPlugins();
@@ -3754,13 +3767,10 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
                     }
                     csvReader.close();
-                } catch (FileNotFoundException e) {
-                    printException(e, "Import plugins: file not found");
                 } catch (IOException e) {
                     printException(e, "Import plugins: error reading the file");
                 }
 
-            }
 
         }
 
