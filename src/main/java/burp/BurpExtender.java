@@ -348,7 +348,7 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
         stdout.println("Welcome to BurpPy, the new bridge between Burp Suite and Python!");
         stdout.println("Created by Xinwu");
-        stdout.println("Version: 0.1");
+        stdout.println("Version: 0.2");
         stdout.println("");
         stdout.println("Github: https://github.com/zhangxinwu/BurpPy");
         stdout.println("");
