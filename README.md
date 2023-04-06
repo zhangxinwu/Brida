@@ -34,40 +34,8 @@ def sign(hp):
     hp = RN.join([' '.join([act_method, path, http_version])]+[": ".join([k, header_map[k]]) for k in header_map]+["",body])
     return hp
 
-
-
-def main():
-    global RN
-    RN = '\n'
-    hp = '''POST /captiveportal/generate_204 HTTP/1.1
-Host: edge-http.microsoft.com
-Pragma: no-cache
-Cache-Control: no-cache
-Sec-Mesh-Client-Edge-Version: 109.0.1518.78
-Sec-Mesh-Client-Edge-Channel: stable
-Sec-Mesh-Client-OS: Windows
-Sec-Mesh-Client-OS-Version: 10.0.22621
-Sec-Mesh-Client-Arch: x86_64
-Sec-Mesh-Client-WebView: 0
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36 Edg/109.0.1518.78
-Accept-Encoding: gzip, deflate
-Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6
-Connection: close
-fv: 8354259598936351
-ts: 1675839383929
-
-{"idshopapplyclass":"106","pagenum":"1","pagesize":"10"}
-'''
-    print(sign(hp))
-
-if __name__ == "__main__":
-    main()
-    exit()
-    s = hashlib.sha256()    # Get the hash algorithm.
-    s.update(b'abcdefghijklmnopqrstuvwxyz83542595989363511675839383929{"idshopapplyclass":"106","pagenum":"1","pagesize":"10"}')    # Hash the data.
-    b = s.hexdigest()       # Get he hash value.
-    print(b)
-    a,b = [2, 3]
-    print(a, b)
-
 ```
+![image](https://user-images.githubusercontent.com/22868906/230308491-24f5fa54-d431-478d-ae39-a4aa2a536305.png)
+![image](https://user-images.githubusercontent.com/22868906/230308107-0673e1c1-d3ca-4936-86dc-c6083362c32d.png)
+
+
