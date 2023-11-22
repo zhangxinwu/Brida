@@ -187,7 +187,9 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
     private TextEditorPane jsEditorTextArea;
 
     private Thread stdoutThread;
+    private volatile boolean stdoutThreadRunning = true;
     private Thread stderrThread;
+    private volatile boolean stderrThreadRunning = true;
 
     private JTextField findTextField;
 
@@ -2218,8 +2220,9 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
             stdoutThread = new Thread() {
 
                 public void run() {
+                    stdoutThreadRunning = true;
 
-                    while (true) {
+                    while (stdoutThreadRunning) {
 
                         try {
 
@@ -2278,8 +2281,9 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
             stderrThread = new Thread() {
 
                 public void run() {
+                    stderrThreadRunning = true; // Set the flag to true to start the thread that will read stderr
 
-                    while (true) {
+                    while (stderrThreadRunning) {
 
                         try {
 
@@ -2767,10 +2771,10 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
             popupEncoderWindow("Choose encode options", customPluginMessageEditorModifiedOutputEncodingText, customPluginMessageEditorModifiedOutputEncodingTransformationList);
 
         } else if (command.equals("killServer") && serverStarted) {
-
-            stdoutThread.stop();
-            stderrThread.stop();
-
+            try {
+                stderrThreadRunning = false;
+                stdoutThreadRunning = false;
+            } catch (Exception e) {}
             try {
                 //pyroBridaService.call("shutdown");
 //                executePyroCall(pyroBridaService, "shutdown", new Object[]{});
@@ -4572,8 +4576,8 @@ public class BurpExtender implements IBurpExtender, ITab, ActionListener, MouseL
 
         if (serverStarted) {
 
-            stdoutThread.stop();
-            stderrThread.stop();
+            stdoutThreadRunning = false;
+            stderrThreadRunning = false;
 
             try {
                 //pyroBridaService.call("shutdown");
